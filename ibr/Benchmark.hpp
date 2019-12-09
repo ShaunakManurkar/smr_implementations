@@ -18,6 +18,52 @@ using namespace chrono;
 class Benchmarks {
 
 private:
+    struct UserData  {
+        long long seq;
+        int tid;
+        UserData(long long lseq, int ltid) {
+            this->seq = lseq;
+            this->tid = ltid;
+        }
+        UserData() {
+            this->seq = -2;
+            this->tid = -2;
+        }
+        UserData(const UserData &other) : seq(other.seq), tid(other.tid) { }
+
+        bool operator < (const UserData& other) const {
+            return seq < other.seq;
+        }
+        bool operator == (const UserData& other) const {
+            return seq == other.seq && tid == other.tid;
+        }
+    };
+
+    struct Result {
+        nanoseconds nsEnq = 0ns;
+        nanoseconds nsDeq = 0ns;
+        long long numEnq = 0;
+        long long numDeq = 0;
+        long long totOpsSec = 0;
+
+        Result() { }
+
+        Result(const Result &other) {
+            nsEnq = other.nsEnq;
+            nsDeq = other.nsDeq;
+            numEnq = other.numEnq;
+            numDeq = other.numDeq;
+            totOpsSec = other.totOpsSec;
+        }
+
+        bool operator < (const Result& other) const {
+            return totOpsSec < other.totOpsSec;
+        }
+    };
+
+
+    static const long long NSEC_IN_SEC = 1000000000LL;
+
     int numThreads;
 
 public:
@@ -34,14 +80,16 @@ public:
         Q* queue = nullptr;
 
         // Create all the objects in the list
+        UserData* udarray[total_elements];
         int* elements[total_elements];
         for (int i = 0; i < total_elements; i++) 
         {
+            udarray[i] = new UserData(i, 0);
             elements[i] = new int(i);
         }
 
         // Can either be a Reader or a Writer
-        auto rw_lambda = [this,&update_ratio,&quit,&startFlag,&queue,&total_elements, &elements](long long *ops, const int tid) {
+        auto rw_lambda = [this,&update_ratio,&quit,&startFlag,&queue,&udarray,&total_elements, &elements](long long *ops, const int tid) {
             long long numOps = 0;
             uint64_t seed = tid+1234567890123456781ULL;
             while (!startFlag.load()) { } // spin
@@ -51,9 +99,15 @@ public:
                 seed = randomLong(seed);
                 auto ratio = seed%10000;  // Ratios are in per-10k units
                 if (ratio < update_ratio) {
+                    // Writer threads
+                    // queue->enqueue(udarray[ix], tid);
                     queue->enqueue(elements[ix], tid);
                 } else {
+                    // queue->dequeue(tid);
                     queue->dequeue(tid);
+                    // cout<<"dequeue\n";
+                    // Reader threads
+                    // list->contains(udarray[ix], tid);
                     // seed = randomLong(seed);
                     // ix = (unsigned int)(seed%total_elements);
                     // list->contains(udarray[ix], tid);
@@ -64,18 +118,22 @@ public:
         };
 
         for (int irun = 0; irun < total_runs; irun++) {
+            // list = new L(numThreads);
             queue = new Q(numThreads);
-            
+            // Add all the items to the list
             for (int i = 0; i < total_elements; i++) 
             {
+                // list->insert(udarray[i], 0);
+                // queue->enqueue(udarray[i], 0);
+                // list->push(udarray[i], 0);
                 queue->enqueue(elements[i], 0);
             }
 
             if (irun == 0) 
             {
+                // cout << "##### " << list->className() << " #####  \n";
                 cout<<"----- Benchmarking Queue ------\n";
             }
-
             thread rwThreads[numThreads];
             for (int tid = 0; tid < numThreads; tid++) 
             {
@@ -98,10 +156,11 @@ public:
 
         for (int i = 0; i < total_elements; i++) 
         {
+            // delete udarray[i];
             delete elements[i];
         }
 
-        // Calculating throughput
+        // Accounting
         vector<long long> agg(total_runs);
         for (int irun = 0; irun < total_runs; irun++) {
             agg[irun] = 0;
@@ -131,13 +190,16 @@ public:
         S* stack = nullptr;
 
         // Create all the objects in the list
+        UserData* udarray[total_elements];
         int* elements[total_elements];
         for (int i = 0; i < total_elements; i++) 
         {
+            udarray[i] = new UserData(i, 0);
             elements[i] = new int(i);
         }
 
-        auto rw_lambda = [this,&update_ratio,&quit,&startFlag,&stack,&total_elements, &elements](long long *ops, const int tid) {
+        // Can either be a Reader or a Writer
+        auto rw_lambda = [this,&update_ratio,&quit,&startFlag,&stack,&udarray,&total_elements, &elements](long long *ops, const int tid) {
             long long numOps = 0;
             uint64_t seed = tid+1234567890123456781ULL;
             while (!startFlag.load()) { } // spin
@@ -147,9 +209,22 @@ public:
                 seed = randomLong(seed);
                 auto ratio = seed%10000;  // Ratios are in per-10k units
                 if (ratio < update_ratio) {
+                    // Writer threads
+                    // if (list->remove(udarray[ix], tid)) list->insert(udarray[ix], tid);
+                    // stack->push(udarray[ix], tid);
                     stack->push(elements[ix], tid);
+                    // list->enqueue(udarray[ix], tid);
+                    // cout<<"enqueue\n";
                 } else {
+                    // stack->pop(tid);
                     stack->pop(tid);
+                    // list->dequeue(tid);
+                    // cout<<"dequeue\n";
+                    // Reader threads
+                    // list->contains(udarray[ix], tid);
+                    // seed = randomLong(seed);
+                    // ix = (unsigned int)(seed%total_elements);
+                    // list->contains(udarray[ix], tid);
                 }
                 numOps+=2;
             }
@@ -161,11 +236,15 @@ public:
             // Add all the items to the list
             for (int i = 0; i < total_elements; i++) 
             {
+                // list->insert(udarray[i], 0);
+                // list->enqueue(udarray[i], 0);
+                // stack->push(udarray[i], 0);
                 stack->push(elements[i], 0);
             }
 
             if (irun == 0) 
             {
+                // cout << "##### " << list->className() << " #####  \n";
                 cout<<"----- Benchmarking Stack ------\n";
             }
             thread rwThreads[numThreads];
@@ -216,48 +295,61 @@ public:
     }
 
     template<typename L>
-    long long benchmarkLinkedList(const int update_ratio, const seconds test_length, const int total_runs, const int total_elements) {
-        long long ops[total_elements][total_runs];
+    long long benchmarkLinkedList(const int updateRatio, const seconds testLengthSeconds, const int numRuns, const int numElements) {
+        long long ops[numThreads][numRuns];
         atomic<bool> quit = { false };
         atomic<bool> startFlag = { false };
         L* list = nullptr;
 
-        int* elements[total_elements];
-        for (int i = 0; i < total_elements; i++) 
+        // Create all the objects in the list
+        UserData* udarray[numElements];
+        int* elements[numElements];
+        for (int i = 0; i < numElements; i++) 
         {
+            udarray[i] = new UserData(i, 0);
             elements[i] = new int(i);
         }
 
         // Creating threads using lambda functions
-        auto rw_lambda = [this,&update_ratio,&quit,&startFlag,&list,&total_elements, &elements](long long *ops, const int tid) {
+        auto rw_lambda = [this,&updateRatio,&quit,&startFlag,&list,&udarray,&numElements, &elements](long long *ops, const int tid) {
             long long numOps = 0;
             uint64_t seed = tid+1234567890123456781ULL;
             while (!startFlag.load()) { } // spin
             while (!quit.load()) {
                 seed = randomLong(seed);
-                auto ix = (unsigned int)(seed%total_elements);
+                auto ix = (unsigned int)(seed%numElements);
                 seed = randomLong(seed);
                 auto ratio = seed%10000;  // Ratios are in per-10k units
-                if (ratio < update_ratio) 
-                {
-                    if (list->remove(elements[ix], tid)) 
-                    {
-                        list->insert(elements[ix], tid);
-                    }
+                if (ratio < updateRatio) {
+                    if (list->remove(elements[ix], tid)) list->insert(elements[ix], tid);
+                    // if (list->remove(udarray[ix], tid)) list->insert(udarray[ix], tid);
+                    // list->push(udarray[ix], tid);
+                    // list->enqueue(udarray[ix], tid);
+                    // cout<<"enqueue\n";
                 } else {
+                    // list->pop(tid);
+                    // list->dequeue(tid);
+                    // cout<<"dequeue\n";
+                    // list->contains(udarray[ix], tid);
                     list->contains(elements[ix], tid);
+                    // seed = randomLong(seed);
+                    // ix = (unsigned int)(seed%numElements);
+                    // list->contains((&elements[ix], tid);
                 }
                 numOps+=2;
             }
             *ops = numOps;
         };
 
-        for (int irun = 0; irun < total_runs; irun++) {
+        for (int irun = 0; irun < numRuns; irun++) {
             list = new L(numThreads);
             // Add all the items to the list
-            for (int i = 0; i < total_elements; i++) 
+            for (int i = 0; i < numElements; i++) 
             {
+                // list->insert(udarray[i], 0);
                 list->insert(elements[i], 0);
+                // list->enqueue(udarray[i], 0);
+                // list->push(udarray[i], 0);
             }
 
             if (irun == 0) 
@@ -273,7 +365,7 @@ public:
 
             startFlag.store(true);
             // Sleep for 100 seconds
-            this_thread::sleep_for(test_length);
+            this_thread::sleep_for(testLengthSeconds);
             quit.store(true);
             for (int tid = 0; tid < numThreads; tid++) 
             {
@@ -285,14 +377,15 @@ public:
             delete list;
         }
 
-        for (int i = 0; i < total_elements; i++) 
+        for (int i = 0; i < numElements; i++) 
         {
+            // delete udarray[i];
             delete elements[i];
         }
 
         // Accounting
-        vector<long long> agg(total_runs);
-        for (int irun = 0; irun < total_runs; irun++) {
+        vector<long long> agg(numRuns);
+        for (int irun = 0; irun < numRuns; irun++) {
             agg[irun] = 0;
             for (int tid = 0; tid < numThreads; tid++) {
                 agg[irun] += ops[tid][irun];
@@ -301,9 +394,9 @@ public:
 
         // Compute the median, max and min. numRuns must be an odd number
         sort(agg.begin(),agg.end());
-        auto maxops = agg[total_runs-1];
+        auto maxops = agg[numRuns-1];
         auto minops = agg[0];
-        auto medianops = agg[total_runs/2];
+        auto medianops = agg[numRuns/2];
         auto delta = (long)(100.*(maxops-minops) / ((double)medianops));
 
         // Printed value is the median of the number of ops per second that all threads were able to accomplish (on average)
@@ -339,8 +432,8 @@ public:
                 Benchmarks bench(total_threads[thread_index]);
                 std::cout << "\n-----  Benchmarks   numElements=" << total_elements << "   ratio=" << ratio[ratio_index]/100 << "%   numThreads=" << total_threads[thread_index] << "   numRuns=" << total_runs << "   length=" << test_length.count() << "s -----\n";
                 // bench.benchmarkLinkedList<LinkedListURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
-                // bench.benchmarkQueues<QueueURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
-                bench.benchmarkStacks<StackURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+                bench.benchmarkQueues<QueueURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+                // bench.benchmarkStacks<StackURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
             }
         }
     }
