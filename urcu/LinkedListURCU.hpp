@@ -17,11 +17,6 @@ private:
         std::atomic<Node*> next;
 
         Node(T* key) : key{key}, next{nullptr} { }
-        // Node(T* key)
-        // {
-        //     this->key = key;
-        //     this->next = nullptr;
-        // }
     };
 
     std::atomic<Node*> head;
@@ -182,6 +177,11 @@ private:
 
     Node * getUnmarked(Node * node) {
     	return (Node*)((size_t) node & (~0x1));
+    }
+
+    int getSizeOfRetiredList()
+    {
+
     }
 
     void deleteRetired(std::vector<Node*>& retired) {

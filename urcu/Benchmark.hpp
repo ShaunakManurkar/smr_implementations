@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <time.h>
 
 #include "LinkedListURCU.hpp"
 #include "QueueURCU.hpp"
@@ -43,22 +44,25 @@ public:
         // Can either be a Reader or a Writer
         auto rw_lambda = [this,&update_ratio,&quit,&startFlag,&queue,&total_elements, &elements](long long *ops, const int tid) {
             long long numOps = 0;
-            uint64_t seed = tid+1234567890123456781ULL;
+            uint64_t seed = tid;
+            srand(time(NULL));
             while (!startFlag.load()) { } // spin
             while (!quit.load()) {
-                seed = randomLong(seed);
+                // seed = randomLong(seed);
+                seed = rand()*total_elements + 1;
                 auto ix = (unsigned int)(seed%total_elements);
-                seed = randomLong(seed);
+                // seed = randomLong(seed);
                 auto ratio = seed%10000;  // Ratios are in per-10k units
                 if (ratio < update_ratio) {
-                    queue->enqueue(elements[ix], tid);
+                    if(queue->dequeue(tid) != NULL)
+                    {
+                        queue->enqueue(elements[ix], tid);
+                        numOps+=1;
+                    }
                 } else {
                     queue->dequeue(tid);
-                    // seed = randomLong(seed);
-                    // ix = (unsigned int)(seed%total_elements);
-                    // list->contains(udarray[ix], tid);
                 }
-                numOps+=2;
+                numOps+=1;
             }
             *ops = numOps;
         };
@@ -139,19 +143,23 @@ public:
 
         auto rw_lambda = [this,&update_ratio,&quit,&startFlag,&stack,&total_elements, &elements](long long *ops, const int tid) {
             long long numOps = 0;
-            uint64_t seed = tid+1234567890123456781ULL;
+            uint64_t seed = tid;
+            srand(time(NULL));
             while (!startFlag.load()) { } // spin
             while (!quit.load()) {
-                seed = randomLong(seed);
+                seed = rand()*total_elements + 1;
                 auto ix = (unsigned int)(seed%total_elements);
-                seed = randomLong(seed);
                 auto ratio = seed%10000;  // Ratios are in per-10k units
                 if (ratio < update_ratio) {
                     stack->push(elements[ix], tid);
                 } else {
-                    stack->pop(tid);
+                    if(stack->pop(tid) != NULL)
+                    {
+                        stack->push(elements[ix], tid);
+                        numOps+=1;
+                    }
                 }
-                numOps+=2;
+                numOps+=1;
             }
             *ops = numOps;
         };
@@ -231,23 +239,27 @@ public:
         // Creating threads using lambda functions
         auto rw_lambda = [this,&update_ratio,&quit,&startFlag,&list,&total_elements, &elements](long long *ops, const int tid) {
             long long numOps = 0;
-            uint64_t seed = tid+1234567890123456781ULL;
+            uint64_t seed = tid;
+            
+            srand (time(NULL));
+
             while (!startFlag.load()) { } // spin
-            while (!quit.load()) {
-                seed = randomLong(seed);
-                auto ix = (unsigned int)(seed%total_elements);
-                seed = randomLong(seed);
-                auto ratio = seed%10000;  // Ratios are in per-10k units
+            while (!quit.load()) 
+            {
+                seed = rand()*total_elements + 1;
+                unsigned int ix = (unsigned int)(seed%total_elements);
+                int ratio = seed%10000;  // Ratios are in per-10k units
                 if (ratio < update_ratio) 
                 {
                     if (list->remove(elements[ix], tid)) 
                     {
                         list->insert(elements[ix], tid);
+                        numOps+=1;
                     }
                 } else {
                     list->contains(elements[ix], tid);
                 }
-                numOps+=2;
+                numOps+=1;
             }
             *ops = numOps;
         };
@@ -272,7 +284,7 @@ public:
             }
 
             startFlag.store(true);
-            // Sleep for 100 seconds
+            // Sleep for 10 seconds
             this_thread::sleep_for(test_length);
             quit.store(true);
             for (int tid = 0; tid < numThreads; tid++) 
@@ -311,22 +323,13 @@ public:
         return medianops;
     }
 
-    uint64_t randomLong(uint64_t x) {
-        x ^= x >> 12; // a
-        x ^= x << 25; // b
-        x ^= x >> 27; // c
-        return x * 2685821657736338717LL;
-    }
-
-
-
 public:
 
     static void allThroughputTests() 
     {
 
         vector<int> total_threads = {4, 8, 16};
-        vector<int> ratio = {0, 1000, 5000, 10000}; // per-10k ratio: 100%, 10%, 1%, 0%
+        vector<int> ratio = {5000}; // per-10k ratio: 100%, 10%, 1%, 0%
         int total_runs = 5;
         const seconds test_length = 10s;
         int total_elements = 10000;
@@ -339,8 +342,8 @@ public:
                 Benchmarks bench(total_threads[thread_index]);
                 std::cout << "\n-----  Benchmarks   numElements=" << total_elements << "   ratio=" << ratio[ratio_index]/100 << "%   numThreads=" << total_threads[thread_index] << "   numRuns=" << total_runs << "   length=" << test_length.count() << "s -----\n";
                 // bench.benchmarkLinkedList<LinkedListURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
-                // bench.benchmarkQueues<QueueURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
-                bench.benchmarkStacks<StackURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+                bench.benchmarkQueues<QueueURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+                // bench.benchmarkStacks<StackURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
             }
         }
     }

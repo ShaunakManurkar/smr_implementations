@@ -17,17 +17,11 @@ private:
         std::atomic<Node*> next;
 
         Node(T* userItem) : item{userItem}, next{nullptr} { }
-        // Node(T* item)
-        // {
-        //     this->item = item;
-        //     this->next.store(nullptr);
-        // }
     };
 
     std::atomic<Node*> top;
     int max_threads;
     URCU urcu {max_threads};
-    // hazardPointers<Node> hpStack{numOfThreads};
 
 public:
 
@@ -39,7 +33,6 @@ public:
 
     ~StackURCU()
     {
-        // this->max_threads = max_threads;
         while(pop(0) != nullptr);
         delete top.load();
     }
@@ -75,15 +68,11 @@ public:
             temp = top.load();
             if(temp == nullptr)
             {
-                // hpStack.clear(threadID);
                 urcu.readUnlock(threadId);
                 return nullptr;
             }
-            // hpStack.commitHazardPtr(0, temp, threadID);
-            // urcu.readLock(threadId);
             if(top.load() != temp)
             {
-                // hpStack.clear(threadID);
                 urcu.readUnlock(threadId);
                 continue;
             }
@@ -94,7 +83,6 @@ public:
             }
         }
         ret_data = temp->item;
-        // hpStack.retireNode(temp,threadID);
         retired.push_back((Node*)temp);
         urcu.readUnlock(threadId);
         deleteRetiredNodes(retired);

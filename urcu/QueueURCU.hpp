@@ -7,9 +7,6 @@
 #include <string>
 #include <vector>
 #include "URCU.hpp"
-// #include "URCUGraceVersion.hpp"
-// using namespace std;
-// using namespace chrono;
 
 template<typename T>
 class QueueURCU
@@ -21,11 +18,6 @@ private:
         std:: atomic<Node*> next;
 
         Node(T* userItem) : item{userItem}, next{nullptr} { }
-        // Node(T* item) 
-        // {
-        //     this->item = item;
-        //     this->next.store(nullptr);
-        // }
     };
 
     std::atomic<Node*> head;
@@ -35,12 +27,6 @@ private:
 
 public:
 
-    // MichaelScottQueue(int maxThreads=MAX_THREADS) : maxThreads{maxThreads} {
-    //     Node* sentinelNode = new Node(nullptr);
-    //     head.store(sentinelNode, std::memory_order_relaxed);
-    //     tail.store(sentinelNode, std::memory_order_relaxed);
-    // }
-
     QueueURCU(int max_threads=128) : max_threads{max_threads} {
         Node* sentinel_node = new Node(nullptr);
         head.store(sentinel_node, std::memory_order_relaxed);
@@ -49,8 +35,8 @@ public:
 
     ~QueueURCU() 
     {
-        while (dequeue(0) != nullptr); // Drain the queue
-        delete head.load();            // Delete the last node
+        while (dequeue(0) != nullptr);
+        delete head.load();            
     }
 
     bool enqueue(T* item, int thread_id)
