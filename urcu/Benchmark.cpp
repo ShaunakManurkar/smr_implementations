@@ -1,6 +1,3 @@
-#ifndef _BENCHMARK_H_
-#define _BENCHMARK_H_
-
 #include <atomic>
 #include <chrono>
 #include <thread>
@@ -323,45 +320,60 @@ public:
         std::cout << "Ops/sec = " << medianops << "   delta = " << delta << "%   min = " << minops << "   max = " << maxops << "\n";
         return medianops;
     }
+};
 
-public:
+int main(int argc, char* argv[])
+{
+    int max_threads;
 
-    static void allThroughputTests(char* ds_type, int max_threads) 
+    if(argc <= 1)
     {
-        std::cout<<"command line inputs data structure: "<<ds_type<<" total threads: "<<max_threads<<"\n";
+        cout<<"Please provide the proper arguments\n";
+        return -1;
+    }
 
-        vector<int> total_threads = {4, 8, 16};
-        vector<int> ratio = {5000}; // per-10k ratio: 100%, 10%, 1%, 0%
-        int total_runs = 5;
-        const seconds test_length = 10s;
-        int total_elements = 10000;
-   
-        for(int thread_index=0; thread_index < total_threads.size(); thread_index++)
+    char* ds_type = argv[1];
+
+    if(argc > 2)
+    {
+        max_threads = atoi(argv[2]);
+    }
+    else
+    {
+        max_threads = -1;
+    }
+
+    std::cout<<"command line inputs data structure: "<<ds_type<<" total threads: "<<max_threads<<"\n";
+
+    vector<int> total_threads = {4, 8, 16};
+    vector<int> ratio = {5000}; // per-10k ratio: 100%, 10%, 1%, 0%
+    int total_runs = 5;
+    const seconds test_length = 10s;
+    int total_elements = 10000;
+
+    for(int thread_index=0; thread_index < total_threads.size(); thread_index++)
+    {
+        for(int ratio_index=0; ratio_index < ratio.size(); ratio_index++)
         {
-            for(int ratio_index=0; ratio_index < ratio.size(); ratio_index++)
+            Benchmarks bench(total_threads[thread_index]);
+            std::cout << "\n-----  Benchmarks   numElements=" << total_elements << "   ratio=" << ratio[ratio_index]/100 << "%   numThreads=" << total_threads[thread_index] << "   numRuns=" << total_runs << "   length=" << test_length.count() << "s -----\n";
+            
+            if(strcmp(ds_type, "linkedlist") == 0)
             {
-                Benchmarks bench(total_threads[thread_index]);
-                std::cout << "\n-----  Benchmarks   numElements=" << total_elements << "   ratio=" << ratio[ratio_index]/100 << "%   numThreads=" << total_threads[thread_index] << "   numRuns=" << total_runs << "   length=" << test_length.count() << "s -----\n";
-                
-                if(strcmp(ds_type, "linkedlist") == 0)
-                {
-                    bench.benchmarkLinkedList<LinkedListURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
-                }
-                else if(strcmp(ds_type, "queue") == 0)
-                {
-                    bench.benchmarkQueues<QueueURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
-                }
-                else if(strcmp(ds_type, "stack") == 0)
-                {
-                    bench.benchmarkStacks<StackURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
-                }
-                else
-                {
-                    std::cout<<"ERROR: Enter appropriate data structure\n";
-                }
+                bench.benchmarkLinkedList<LinkedListURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+            }
+            else if(strcmp(ds_type, "queue") == 0)
+            {
+                bench.benchmarkQueues<QueueURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+            }
+            else if(strcmp(ds_type, "stack") == 0)
+            {
+                bench.benchmarkStacks<StackURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+            }
+            else
+            {
+                std::cout<<"ERROR: Enter appropriate data structure\n";
             }
         }
     }
-};
-
-#endif
+}
