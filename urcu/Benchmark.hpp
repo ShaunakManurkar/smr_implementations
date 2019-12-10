@@ -8,6 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <time.h>
+#include <cstring>
 
 #include "LinkedListURCU.hpp"
 #include "QueueURCU.hpp"
@@ -253,7 +254,7 @@ public:
                 {
                     if (list->remove(elements[ix], tid)) 
                     {
-                        list->insert(elements[ix], tid);
+                        list->add(elements[ix], tid);
                         numOps+=1;
                     }
                 } else {
@@ -269,7 +270,7 @@ public:
             // Add all the items to the list
             for (int i = 0; i < total_elements; i++) 
             {
-                list->insert(elements[i], 0);
+                list->add(elements[i], 0);
             }
 
             if (irun == 0) 
@@ -325,15 +326,15 @@ public:
 
 public:
 
-    static void allThroughputTests() 
+    static void allThroughputTests(char* ds_type, int max_threads) 
     {
+        std::cout<<"command line inputs data structure: "<<ds_type<<" total threads: "<<max_threads<<"\n";
 
         vector<int> total_threads = {4, 8, 16};
         vector<int> ratio = {5000}; // per-10k ratio: 100%, 10%, 1%, 0%
         int total_runs = 5;
         const seconds test_length = 10s;
         int total_elements = 10000;
-
    
         for(int thread_index=0; thread_index < total_threads.size(); thread_index++)
         {
@@ -341,9 +342,23 @@ public:
             {
                 Benchmarks bench(total_threads[thread_index]);
                 std::cout << "\n-----  Benchmarks   numElements=" << total_elements << "   ratio=" << ratio[ratio_index]/100 << "%   numThreads=" << total_threads[thread_index] << "   numRuns=" << total_runs << "   length=" << test_length.count() << "s -----\n";
-                // bench.benchmarkLinkedList<LinkedListURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
-                bench.benchmarkQueues<QueueURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
-                // bench.benchmarkStacks<StackURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+                
+                if(strcmp(ds_type, "linkedlist") == 0)
+                {
+                    bench.benchmarkLinkedList<LinkedListURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+                }
+                else if(strcmp(ds_type, "queue") == 0)
+                {
+                    bench.benchmarkQueues<QueueURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+                }
+                else if(strcmp(ds_type, "stack") == 0)
+                {
+                    bench.benchmarkStacks<StackURCU<int>>(ratio[ratio_index], test_length, total_runs, total_elements);
+                }
+                else
+                {
+                    std::cout<<"ERROR: Enter appropriate data structure\n";
+                }
             }
         }
     }

@@ -47,7 +47,7 @@ public:
         delete pred;
     }
     
-    bool insert(T* key, const int tid)
+    bool add(T* key, const int tid)
     {
         Node *curr, *next;
         std::atomic<Node*> *pred;
