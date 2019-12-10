@@ -1,6 +1,7 @@
 #ifndef INTERVAL_BASED_RECLAMATION_HPP
 #define INTERVAL_BASED_RECLAMATION_HPP
 
+#include <iostream>
 #include <atomic>
 #include <vector>
 
@@ -15,7 +16,7 @@ private:
     int numThreads;
     int epochFreq;
     int emptyFreq;
-    atomic<uint64_t> reservations[MAX_NUMBER_OF_THREADS_IBR];
+    std::atomic<uint64_t> reservations[MAX_NUMBER_OF_THREADS_IBR];
     uint64_t allocStat[MAX_NUMBER_OF_THREADS_IBR];
     uint64_t retireStat[MAX_NUMBER_OF_THREADS_IBR];
     std::vector<T*> retiredList[MAX_NUMBER_OF_THREADS_IBR];
