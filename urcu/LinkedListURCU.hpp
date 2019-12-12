@@ -133,6 +133,11 @@ public:
         return isContains;
     }
 
+    int getRetiredNodesCount(const int tid)
+    {
+        return retired_nodes_count[tid];
+    }
+
 private:
     bool find (T* key, std::atomic<Node*> **par_pred, Node **par_curr, Node **par_next, std::vector<Node*>& retired, const int tid)
     {
@@ -200,12 +205,6 @@ private:
                 delete retNode;
             }
         }
-    }
-
-public:
-    int getRetiredNodesCount(const int tid)
-    {
-        return retired_nodes_count[tid];
     }
 };
 
