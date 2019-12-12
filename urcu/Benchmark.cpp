@@ -414,7 +414,7 @@ int main(int argc, char* argv[])
     int test_length = 10;
     int total_elements = 10000;
 
-    cout<<"\n----- Benchmarking "<<ds_type<<" -----\n";
+    cout<<"\n----- Benchmarking "<<ds_type<<" -----";
     for(int thread_index=0; thread_index < total_threads.size(); thread_index++)
     {
         for(int ratio_index=0; ratio_index < ratio.size(); ratio_index++)
