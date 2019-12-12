@@ -88,6 +88,10 @@ public:
         hpStack.clear(threadID);
         return ret_data;
     }
+
+    uint64_t getRetiredCountStack(int threadID){
+        return hpStack.getRetiredCount(threadID);
+    }
 };
 
 #endif

@@ -18,12 +18,14 @@ private:
     int threadCount;
     std::atomic<T*>* hazardPointerList[MAX_NUMBER_OF_THREADS];
     std::vector<T*>  retiredPointerList[MAX_NUMBER_OF_THREADS];
+    uint64_t retiredCount[MAX_NUMBER_OF_THREADS];
 
 public:
     hazardPointers(int numThreads){
         threadCount = numThreads;
         for (int i = 0; i < MAX_NUMBER_OF_THREADS; i++) {
             hazardPointerList[i] = new std::atomic<T*>[MAX_NUMBER_OF_HAZARD_POINTERS_PER_THREAD];
+            retiredCount[i] = 0;
             //retiredPointerList[i].reserve(TOTAL_NUMBER_OF_HAZARD_POINTERS);
             for (int j = 0; j < MAX_NUMBER_OF_HAZARD_POINTERS_PER_THREAD; j++) {
                 hazardPointerList[i][j].store(nullptr, std::memory_order_relaxed);
@@ -64,6 +66,7 @@ public:
 
     void retireNode(T* ptr, const int threadID) {
         bool deleteNode = true;
+        retiredCount[threadID] += 1;
         retiredPointerList[threadID].push_back(ptr);
         if (retiredPointerList[threadID].size() < RETIRED_NODES_THRESHOLD) 
         {  
@@ -87,9 +90,14 @@ public:
             {
                 retiredPointerList[threadID].erase(retiredPointerList[threadID].begin() + i);
                 delete stptr;
+                retiredCount[threadID] -= 1;
                 continue;
             }
         }
+    }
+
+    uint64_t getRetiredCount(int threadID){
+        return retiredCount[threadID];
     }
 };
 

@@ -90,6 +90,10 @@ public:
         hpQueue.clear(threadID);
         return nullptr;
     }
+
+    uint64_t getRetiredCountQueue(int threadID){
+        return hpQueue.getRetiredCount(threadID);
+    }
 };
 
 #endif

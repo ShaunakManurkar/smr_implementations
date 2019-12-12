@@ -105,6 +105,10 @@ public:
         return find(item, &pred, &curr, &next, threadID);
     }
 
+    uint64_t getRetiredCountLinkedList(int threadID){
+        return hpList.getRetiredCount(threadID);
+    }
+
 
 private:
 
