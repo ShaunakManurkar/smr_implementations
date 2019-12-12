@@ -407,7 +407,7 @@ int main(int argc, char* argv[])
 
     // std::cout<<"command line inputs data structure: "<<ds_type<<" total threads: "<<max_threads<<"\n";
 
-    vector<int> total_threads = {4, 8, 16};
+    vector<int> total_threads = {2, 4, 8, 16, 24, 32, 40, 64};
     vector<int> ratio = {5000}; // per-10k ratio: 100%, 10%, 1%, 0%
     int total_runs = 5;
     // const seconds test_length = 10s;

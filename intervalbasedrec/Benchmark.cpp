@@ -402,7 +402,7 @@ int main(int argc, char* argv[])
 
     std::cout<<"\n----- Benchmarking "<<ds_type<<" -----\n";
 
-    vector<int> total_threads = {2, 4, 8};
+    vector<int> total_threads = {2, 4, 8, 16, 24, 32, 40, 64};
     vector<int> ratio = {5000}; // per-10k ratio: 100%, 10%, 1%, 0%
     int total_runs = 5;
     int test_length = 10;
