@@ -228,6 +228,16 @@ public:
         atomic<bool> quit = { false };
         atomic<bool> startFlag = { false };
         L* list = nullptr;
+        long retired_nodes_count[numThreads][total_runs];
+
+        for(int i=0; i<numThreads; i++)
+        {
+            for(int j=0; j<total_runs; j++)
+            {
+                retired_nodes_count[i][j] = 0;
+            }
+        }
+
 
         int* elements[total_elements];
         for (int i = 0; i < total_elements; i++) 
@@ -293,6 +303,13 @@ public:
 
             quit.store(false);
             startFlag.store(false);
+
+            for(int ithreads=0; ithreads<numThreads; ithreads++)
+            {
+                retired_nodes_count[ithreads][total_runs] += list->getRetiredNodesCount(ithreads);
+                std::cout<<retired_nodes_count[ithreads][total_runs]<<"\n";
+            }
+
             delete list;
         }
 
@@ -303,15 +320,21 @@ public:
 
         // Accounting
         vector<long long> agg(total_runs);
-        for (int irun = 0; irun < total_runs; irun++) {
+        vector<long> retired_nodes_agg(total_runs);
+        for (int irun = 0; irun < total_runs; irun++) 
+        {
             agg[irun] = 0;
+            retired_nodes_agg[irun] = 0;
             for (int tid = 0; tid < numThreads; tid++) {
                 agg[irun] += ops[tid][irun];
+                retired_nodes_agg[irun] += retired_nodes_count[tid][irun];
             }
         }
 
         // Compute the median, max and min. numRuns must be an odd number
         sort(agg.begin(),agg.end());
+        sort(retired_nodes_agg.begin(), retired_nodes_agg.end());
+        auto max_retired_node_count = retired_nodes_agg[total_runs-1];
         auto maxops = agg[total_runs-1];
         auto minops = agg[0];
         auto medianops = agg[total_runs/2];
@@ -319,6 +342,7 @@ public:
 
         // Printed value is the median of the number of ops per second that all threads were able to accomplish (on average)
         std::cout << "Ops/sec = " << medianops << "   delta = " << delta << "%   min = " << minops << "   max = " << maxops << "\n";
+        std::cout<<"Total unreclaimed nodes are "<<max_retired_node_count<<"\n\n";
         return medianops;
     }
 };

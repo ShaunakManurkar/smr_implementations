@@ -113,6 +113,10 @@ public:
         return find(item, &pred, &curr, &next, threadID);
     }
 
+    long getRetiredNodesCount(int thread_id)
+    {
+        return ibrList.getRetiredNodes(thread_id);
+    }
 
 private:
 

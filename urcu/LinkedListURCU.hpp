@@ -8,6 +8,8 @@
 #include <vector>
 #include "URCU.hpp"
 
+#define MAX_THREAD_COUNT 40
+
 template<typename T> 
 class LinkedListURCU {
 
@@ -26,6 +28,8 @@ private:
 
     URCU urcu {max_threads};
 
+    long retired_nodes_count[MAX_THREAD_COUNT];
+
 public:
 
     LinkedListURCU(const int max_threads) : max_threads{max_threads} 
@@ -34,6 +38,12 @@ public:
         head.store(new Node(nullptr));
         tail.store(new Node(nullptr));
         head.load()->next.store(tail.load());
+
+        for(int i=0; i<max_threads; i++)
+        {
+            retired_nodes_count[i] = 0;
+        }
+
     }
 
     ~LinkedListURCU() {
@@ -56,11 +66,11 @@ public:
         urcu.readLock(tid);
         while (true) 
         {
-            if (find(key, &pred, &curr, &next, retired)) 
+            if (find(key, &pred, &curr, &next, retired, tid)) 
             {
                 delete newNode;
                 urcu.readUnlock(tid);
-                deleteRetired(retired);
+                deleteRetired(retired, tid);
                 return false;
             }
             newNode->next.store(curr, std::memory_order_relaxed);
@@ -68,7 +78,7 @@ public:
             if (pred->compare_exchange_strong(tmp, newNode)) 
             { 
                 urcu.readUnlock(tid);
-                deleteRetired(retired);
+                deleteRetired(retired, tid);
                 return true;
             }
         }
@@ -83,10 +93,10 @@ public:
         while (true) 
         {
             
-            if (!find(key, &pred, &curr, &next, retired)) 
+            if (!find(key, &pred, &curr, &next, retired, tid)) 
             {
                 urcu.readUnlock(tid);
-                deleteRetired(retired);
+                deleteRetired(retired, tid);
                 return false;
             }
             
@@ -105,7 +115,7 @@ public:
             } else {
                 urcu.readUnlock(tid);
             }
-            deleteRetired(retired);
+            deleteRetired(retired, tid);
             
             return true;
         }
@@ -117,14 +127,14 @@ public:
         std::atomic<Node*> *pred;
         std::vector<Node*> retired;
         urcu.readLock(tid);
-        bool isContains = find(key, &pred, &curr, &next, retired);
+        bool isContains = find(key, &pred, &curr, &next, retired, tid);
         urcu.readUnlock(tid);
-        deleteRetired(retired);
+        deleteRetired(retired, tid);
         return isContains;
     }
 
 private:
-    bool find (T* key, std::atomic<Node*> **par_pred, Node **par_curr, Node **par_next, std::vector<Node*>& retired)
+    bool find (T* key, std::atomic<Node*> **par_pred, Node **par_curr, Node **par_next, std::vector<Node*>& retired, const int tid)
     {
         std::atomic<Node*> *pred;
         Node *curr, *next;
@@ -158,6 +168,7 @@ private:
                 }
                 
                 retired.push_back(getUnmarked(curr));
+                retired_nodes_count[tid]++;
             }
             curr = next;
         }
@@ -179,20 +190,22 @@ private:
     	return (Node*)((size_t) node & (~0x1));
     }
 
-    int getSizeOfRetiredList()
-    {
-
-    }
-
-    void deleteRetired(std::vector<Node*>& retired) {
+    void deleteRetired(std::vector<Node*>& retired, const int tid) {
         if (retired.size() > 0) 
         {
             urcu.synchronizeRCU();
             for (auto retNode : retired) 
             {
+                retired_nodes_count[tid]--;
                 delete retNode;
             }
         }
+    }
+
+public:
+    int getRetiredNodesCount(const int tid)
+    {
+        return retired_nodes_count[tid];
     }
 };
 
