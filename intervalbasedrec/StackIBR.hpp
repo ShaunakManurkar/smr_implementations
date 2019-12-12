@@ -93,6 +93,11 @@ public:
             }
         }
     }
+
+    uint64_t getRetiredCountStack(int threadID)
+    {
+        return ibrStack.getRetiredNodeCount(threadID);
+    }
 };
 
 #endif

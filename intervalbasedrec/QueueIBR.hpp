@@ -103,6 +103,11 @@ public:
         ibrQueue.end_op(threadID);
         return nullptr;
     }
+
+    uint64_t getRetiredCountQueue(int threadID)
+    {
+        return ibrQueue.getRetiredNodeCount(threadID);
+    }
 };
 
 #endif

@@ -5,6 +5,8 @@
 #include <atomic>
 #include <vector>
 
+using namespace std;
+
 #define MAX_NUMBER_OF_THREADS_IBR 40
 #define RETIRED_LIST_SIZE 10
 
@@ -20,8 +22,7 @@ private:
     uint64_t allocStat[MAX_NUMBER_OF_THREADS_IBR];
     uint64_t retireStat[MAX_NUMBER_OF_THREADS_IBR];
     std::vector<T*> retiredList[MAX_NUMBER_OF_THREADS_IBR];
-
-    long retired_nodes_count[MAX_NUMBER_OF_THREADS_IBR];
+    uint64_t retiredNodesCount[MAX_NUMBER_OF_THREADS_IBR];
 
 public:
     IntervalBasedReclamation(int threadCount, int epf, int emf)
@@ -35,7 +36,7 @@ public:
             retiredList[i].reserve(RETIRED_LIST_SIZE);
             allocStat[i] = 0;
             retireStat[i] = 0;
-            retired_nodes_count[i] = 0;
+            retiredNodesCount[i] = 0;
         }
     }
 
@@ -71,8 +72,9 @@ public:
         }
 		uint64_t re = globalEpoch.load(std::memory_order_acquire);
         obj->retire_epoch = re;
-		retiredList[threadID].push_back(obj);	
-        retired_nodes_count[threadID] += 1;
+		retiredList[threadID].push_back(obj);
+        retiredNodesCount[threadID] += 1;
+        //cout << "Incremented ctr to " << retiredNodesCount[threadID] << endl;	
 		if(retireStat[threadID]%emptyFreq == 0)
         {
 			emptyRetireList(threadID);
@@ -104,14 +106,15 @@ public:
 				retiredList[threadID].erase(retiredList[threadID].begin() + i);
 				delete temp;
 				retireStat[threadID] -= 1;
-                retired_nodes_count[threadID] -= 1;
+                retiredNodesCount[threadID] -= 1;
+                //cout << "Decremented ctr to " << retiredNodesCount[threadID] << endl;
 			}
 		}
 	}
 
-    long getRetiredNodes(int thread_id)
+    uint64_t getRetiredNodeCount(int threadID)
     {
-        return retired_nodes_count[thread_id];
+        return retiredNodesCount[threadID];
     }
 
 };
