@@ -318,11 +318,6 @@ public:
                 list->add(elements[i], 0);
             }
 
-            if (irun == 0) 
-            {
-                cout<<"----- Benchmarking Linked List ------\n";
-            }
-
             thread rwThreads[numThreads];
             for (int tid = 0; tid < numThreads; tid++) 
             {
