@@ -3,7 +3,7 @@
 
 #include <atomic>
 #include <iostream>
-#include "hazardEras.hpp"
+#include "hazarderas.hpp"
 
 template<typename T>
 class Stack_HazardEras {
@@ -89,6 +89,10 @@ public:
                 return ret_data;
             }
         }
+    }
+
+    uint64_t getRetiredCountStack(int threadID){
+        return heStack.getRetiredNodeCount(threadID);
     }
 };
 

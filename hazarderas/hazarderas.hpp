@@ -18,12 +18,14 @@ private:
     std::atomic<uint64_t> globalEraClock{1};
     std::atomic<uint64_t>* hazardErasList[HE_MAX_NUMBER_OF_THREADS];
     std::vector<T*> retiredPtrList[HE_MAX_NUMBER_OF_THREADS];
+    uint64_t retiredNodesCount[HE_MAX_NUMBER_OF_THREADS];
 
 public:
     hazardEras(int numThreads){
         threadCount = numThreads;
         for (int i = 0; i < HE_MAX_NUMBER_OF_THREADS; i++) {
             hazardErasList[i] = new std::atomic<uint64_t>[MAX_NUMBER_OF_HAZARD_ERAS_PER_THREAD];
+            retiredNodesCount[i] = 0;
             retiredPtrList[i].reserve(HE_TOTAL_NUMBER_HAZARD_ERAS);
             for (int j = 0; j < MAX_NUMBER_OF_HAZARD_ERAS_PER_THREAD; j++) {
                 hazardErasList[i][j].store(emptyEra, std::memory_order_relaxed);
@@ -97,6 +99,7 @@ public:
         auto currEra = globalEraClock.load();
         item->delEra = currEra;
         retiredPtrList[threadID].push_back(item);
+        retiredNodesCount[threadID] += 1;
         if (globalEraClock == currEra) 
         {
             globalEraClock.fetch_add(1);
@@ -108,9 +111,14 @@ public:
             {
                 retiredPtrList[threadID].erase(retiredPtrList[threadID].begin() + i);
                 delete stptr;
+                retiredNodesCount[threadID] -= 1;
                 continue;
             }
         }
+    }
+
+    uint64_t getRetiredNodeCount(int threadID){
+        return retiredNodesCount[threadID];
     }
 };
 #endif

@@ -96,6 +96,10 @@ public:
         heQueue.clear(threadID);
         return nullptr;
     }
+
+    uint64_t getRetiredCountQueue(int threadID){
+        return heQueue.getRetiredNodeCount(threadID);
+    }
 };
 
 #endif

@@ -7,7 +7,7 @@
 #include <set>
 #include <iostream>
 #include <string>
-#include "hazardEras.hpp"
+#include "hazarderas.hpp"
 
 template<typename T>
 class LinkedList_HazardEras {
@@ -111,6 +111,9 @@ public:
         //heList.clear(threadID);
     }
 
+    uint64_t getRetiredCountLinkedList(int threadID){
+        return heList.getRetiredNodeCount(threadID);
+    }
 
 private:
 
