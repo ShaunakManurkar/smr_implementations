@@ -8,6 +8,8 @@
 #include <vector>
 #include "URCU.hpp"
 
+#define MAX_THREAD_COUNT 40
+
 template<typename T>
 class QueueURCU
 {
@@ -24,13 +26,19 @@ private:
     std::atomic<Node*> tail;
     int max_threads;
     URCU urcu {max_threads};
+    long retired_nodes_count[MAX_THREAD_COUNT];
 
 public:
 
-    QueueURCU(int max_threads=128) : max_threads{max_threads} {
+    QueueURCU(int max_threads) : max_threads{max_threads} {
         Node* sentinel_node = new Node(nullptr);
         head.store(sentinel_node, std::memory_order_relaxed);
         tail.store(sentinel_node, std::memory_order_relaxed);
+
+        for(int i=0; i<max_threads; i++)
+        {
+            retired_nodes_count[i] = 0;
+        }
     }
 
     ~QueueURCU() 
@@ -132,18 +140,25 @@ public:
         }
         // hpQueue.retireNode(temp1,threadID);
         retired.push_back((Node*)temp1);
+        retired_nodes_count[thread_id] += 1;
         urcu.readUnlock(thread_id);
-        deleteRetiredNodes(retired);
+        deleteRetiredNodes(retired, thread_id);
         return ret_data;
     }
 
-    void deleteRetiredNodes(std::vector<Node*>& retired_nodes)
+    long getRetiredNodesCount(int thread_id)
+    {
+        return retired_nodes_count[thread_id];
+    }
+    
+    void deleteRetiredNodes(std::vector<Node*>& retired_nodes, int thread_id)
     {
         if(retired_nodes.size() > 0)
         {
             urcu.synchronizeRCU();
             for(auto del_node : retired_nodes)
             {
+                retired_nodes_count[thread_id] -= 1;
                 delete del_node;
             }
         }

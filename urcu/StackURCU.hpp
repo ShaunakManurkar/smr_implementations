@@ -7,6 +7,8 @@
 #include <vector>
 #include "URCU.hpp"
 
+#define MAX_THREAD_COUNT 40
+
 template<typename T>
 class StackURCU
 {
@@ -22,13 +24,19 @@ private:
     std::atomic<Node*> top;
     int max_threads;
     URCU urcu {max_threads};
+    long retired_nodes_count[MAX_THREAD_COUNT];
 
 public:
 
-    StackURCU(int max_threads=128) : max_threads{max_threads} 
+    StackURCU(int max_threads) : max_threads{max_threads} 
     {
         Node* sentinel_node = new Node(nullptr);
         top.store(sentinel_node, std::memory_order_relaxed);
+
+        for(int i=0; i<max_threads; i++)
+        {
+            retired_nodes_count[i] = 0;
+        }
     }
 
     ~StackURCU()
@@ -84,12 +92,18 @@ public:
         }
         ret_data = temp->item;
         retired.push_back((Node*)temp);
+        retired_nodes_count[threadId] += 1;
         urcu.readUnlock(threadId);
-        deleteRetiredNodes(retired);
+        deleteRetiredNodes(retired, threadId);
         return ret_data;
     }
 
-    void deleteRetiredNodes(std::vector<Node*>& retired_nodes)
+    long getRetiredNodesCount(int threadID)
+    {
+        return retired_nodes_count[threadID];
+    }
+
+    void deleteRetiredNodes(std::vector<Node*>& retired_nodes, int threadID)
     {
         if(retired_nodes.size() > 0)
         {
@@ -97,6 +111,7 @@ public:
             for(auto del_node : retired_nodes)
             {
                 delete del_node;
+                retired_nodes_count[threadID] -= 1;
             }
         }
     }

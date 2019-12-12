@@ -133,9 +133,9 @@ public:
         return isContains;
     }
 
-    int getRetiredNodesCount(const int tid)
+    long getRetiredNodesCount(const int thread_id)
     {
-        return retired_nodes_count[tid];
+        return retired_nodes_count[thread_id];
     }
 
 private:
@@ -173,7 +173,7 @@ private:
                 }
                 
                 retired.push_back(getUnmarked(curr));
-                retired_nodes_count[tid]++;
+                retired_nodes_count[tid] += 1;
             }
             curr = next;
         }
@@ -201,7 +201,7 @@ private:
             urcu.synchronizeRCU();
             for (auto retNode : retired) 
             {
-                retired_nodes_count[tid]--;
+                retired_nodes_count[tid] -= 1;
                 delete retNode;
             }
         }

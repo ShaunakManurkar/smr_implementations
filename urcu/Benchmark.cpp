@@ -32,6 +32,16 @@ public:
         atomic<bool> startFlag = { false };
         Q* queue = nullptr;
 
+        long retired_nodes_count[numThreads][total_runs];
+
+        for(int i=0; i<numThreads; i++)
+        {
+            for(int j=0; j<total_runs; j++)
+            {
+                retired_nodes_count[i][j] = 0;
+            }
+        }
+
         // Create all the objects in the list
         int* elements[total_elements];
         for (int i = 0; i < total_elements; i++) 
@@ -90,6 +100,12 @@ public:
 
             quit.store(false);
             startFlag.store(false);
+
+            for(int thread_index=0; thread_index<numThreads; thread_index++)
+            {
+                retired_nodes_count[thread_index][irun] += queue->getRetiredNodesCount(thread_index);
+            }
+
             delete queue;
         }
 
@@ -100,15 +116,21 @@ public:
 
         // Calculating throughput
         vector<long long> agg(total_runs);
+        vector<long> retired_nodes_agg(total_runs);
+
         for (int irun = 0; irun < total_runs; irun++) {
             agg[irun] = 0;
+            retired_nodes_agg[irun] = 0;
             for (int tid = 0; tid < numThreads; tid++) {
                 agg[irun] += ops[tid][irun];
+                retired_nodes_agg[irun] += retired_nodes_count[tid][irun];
             }
         }
 
         // Compute the median, max and min. numRuns must be an odd number
         sort(agg.begin(),agg.end());
+        sort(retired_nodes_agg.begin(), retired_nodes_agg.end());
+        auto max_retired_nodes = retired_nodes_agg[total_runs-1];
         auto maxops = agg[total_runs-1];
         auto minops = agg[0];
         auto medianops = agg[total_runs/2];
@@ -117,7 +139,7 @@ public:
         // Printed value is the median of the number of ops per second that all threads were able to accomplish (on average)
         // std::cout << "Ops/sec = " << medianops << "   delta = " << delta << "%   min = " << minops << "   max = " << maxops << "\n";
         
-        std::cout << "Ops/sec = "<< maxops << "\n";
+        std::cout << "Ops/sec = "<< maxops << ", Total unreclaimed nodes = "<< max_retired_nodes<<"\n";
         
         return medianops;
     }
@@ -129,6 +151,16 @@ public:
         atomic<bool> quit = { false };
         atomic<bool> startFlag = { false };
         S* stack = nullptr;
+
+        long retired_nodes_count[numThreads][total_runs];
+
+        for(int i=0; i<numThreads; i++)
+        {
+            for(int j=0; j<total_runs; j++)
+            {
+                retired_nodes_count[i][j] = 0;
+            }
+        }
 
         // Create all the objects in the list
         int* elements[total_elements];
@@ -147,13 +179,13 @@ public:
                 auto ix = (unsigned int)(seed%total_elements);
                 auto ratio = seed%10000;  // Ratios are in per-10k units
                 if (ratio < update_ratio) {
-                    stack->push(elements[ix], tid);
-                } else {
                     if(stack->pop(tid) != NULL)
                     {
                         stack->push(elements[ix], tid);
                         numOps+=1;
                     }
+                } else {
+                    stack->pop(tid);
                 }
                 numOps+=1;
             }
@@ -185,6 +217,12 @@ public:
 
             quit.store(false);
             startFlag.store(false);
+
+            for(int thread_index=0; thread_index<numThreads; thread_index++)
+            {
+                retired_nodes_count[thread_index][irun] += stack->getRetiredNodesCount(thread_index);
+            }
+
             delete stack;
         }
 
@@ -196,15 +234,20 @@ public:
 
         // Accounting
         vector<long long> agg(total_runs);
+        vector<long> retired_nodes_agg(total_runs);
         for (int irun = 0; irun < total_runs; irun++) {
             agg[irun] = 0;
+            retired_nodes_agg[irun] = 0;
             for (int tid = 0; tid < numThreads; tid++) {
                 agg[irun] += ops[tid][irun];
+                retired_nodes_agg[irun] += retired_nodes_count[tid][irun];
             }
         }
 
         // Compute the median, max and min. numRuns must be an odd number
         sort(agg.begin(),agg.end());
+        sort(retired_nodes_agg.begin(), retired_nodes_agg.end());
+        auto max_retired_nodes = retired_nodes_agg[total_runs-1];
         auto maxops = agg[total_runs-1];
         auto minops = agg[0];
         auto medianops = agg[total_runs/2];
@@ -213,14 +256,14 @@ public:
         // Printed value is the median of the number of ops per second that all threads were able to accomplish (on average)
         // std::cout << "Ops/sec = " << medianops << "   delta = " << delta << "%   min = " << minops << "   max = " << maxops << "\n";
         
-        std::cout << "Ops/sec = " << maxops << "\n";
+        std::cout << "Ops/sec = " << maxops << ", Total unreclaimed nodes = "<<max_retired_nodes<<" \n";
         
-        // return medianops;
+        return medianops;
     }
 
     template<typename L>
     long long benchmarkLinkedList(const int update_ratio, int test_length, const int total_runs, const int total_elements) {
-        long long ops[total_elements][total_runs];
+        long long ops[numThreads][total_runs];
         atomic<bool> quit = { false };
         atomic<bool> startFlag = { false };
         L* list = nullptr;
@@ -336,7 +379,7 @@ public:
         // Printed value is the median of the number of ops per second that all threads were able to accomplish (on average)
         // std::cout << "Ops/sec = " << medianops << "   delta = " << delta << "%   min = " << minops << "   max = " << maxops << "\n";
         
-        std::cout << "Ops/sec = " << maxops <<", Number of unreclaim nodes: "<<max_retired_nodes<<"\n\n";
+        std::cout << "Ops/sec = " << maxops <<", Total unreclaimed nodes =  "<<max_retired_nodes<<"\n\n";
         return medianops;
     }
 };
