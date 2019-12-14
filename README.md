@@ -4,25 +4,26 @@ The folder contains multiple safe memory reclamation algorithms for different lo
 
 ## Building
 To build the project navigate to any folder. Each foldeer contains a Makefile and do:
-    make
+> make
 
 ## Test
 For macOS/linux:
-    ./benchmark (data structure)
+>    ./benchmark (data structure)
 
 For Windows:
-    ./benchmark.exe (data structure)
+ >   ./benchmark.exe (data structure)
 
 You must provide the data structure as an input. The following data structure can be given as input:
-    1. linkedlist
-    2. queue
-    3. stack
+
+    - linkedlist
+    - queue
+    - stack
 
 Therefore, the command will be:
-    ./benchmark linkedlist
+>    ./benchmark linkedlist
 
 ## Output
 A sample output will be:
-    numThreads=4,Ops/sec = 2568161, Total unreclaimed nodes = 0
+>    numThreads=4,Ops/sec = 2568161, Total unreclaimed nodes = 0
 
 The numThreads will vary from 4-40.
